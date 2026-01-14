@@ -6,12 +6,14 @@ int main(void)
     do
     {
         startSize = get_int("startSize: ");
-    } while (startSize < 9);
+    }
+    while (startSize < 9);
     int endSize;
     do
     {
         endSize = get_int("endSize: ");
-    } while (endSize < startSize);
+    }
+    while (endSize < startSize);
 
     int birth;
     int dead;
@@ -24,7 +26,7 @@ int main(void)
         dead = temp / 4;
         temp += birth - dead;
     }
-    printf("years: %i\n", year);
+    printf("Years: %i\n", year);
 
     return 0;
 }
