@@ -30,6 +30,7 @@ bool vote(int rank, string name, int ranks[]);
 void record_preferences(int ranks[]);
 void add_pairs(void);
 void sort_pairs(void);
+bool check_cycle(int start, int end);
 void lock_pairs(void);
 void print_winner(void);
 
@@ -88,20 +89,6 @@ int main(int argc, string argv[])
 
         printf("\n");
     }
-    // // test
-    // for (int i = 0 ; i < candidate_count; i++)
-    // {
-    //     for (int j = 0; j < candidate_count; j++)
-    //     {
-    //         if (i == j)
-    //         {
-    //             printf("  ");
-    //             continue;
-    //         }
-    //         printf("%i ",preferences[i][j]);
-    //     }
-    //     printf("\n");
-    // }
 
     add_pairs();
     sort_pairs();
@@ -118,7 +105,9 @@ bool vote(int rank, string name, int ranks[])
     {
         if (strcmp(candidates[i], name) == 0)
         {
-            ranks[i] = rank;
+            // 这里又弄反了...修改了vote和record_preferences
+            // 选民的第rank+1偏好是第i+1个候选人
+            ranks[rank] = i;
             return true;
         }
     }
@@ -131,16 +120,9 @@ void record_preferences(int ranks[])
     // TODO
     for (int i = 0 ; i < candidate_count ; i++)
     {
-        for (int j = 0; j < candidate_count; j++)
+        for (int j = i + 1; j < candidate_count; j++)
         {
-            if ( i == j)
-            {
-                continue;
-            }
-            if (ranks[i] < ranks[j])
-            {
-                preferences[i][j]++;
-            }
+            preferences[ranks[i]][ranks[j]]++;
         }
     }
     return;
@@ -180,67 +162,100 @@ void sort_pairs(void)
     // {
     //     temp[i] = preference[pairs[i].winner][pairs[i].loser];
     // }
-    int minpairwinner = pairs[0].winner;
-    int minpairloser = pairs[0].loser;
-    int tag = 0;
+    // test
+    // for(int i = 0; i < pair_count; i++)
+    // {
+    //     printf("%i ",preferences[pairs[i].winner][pairs[i].loser]);
+    // }
+    // printf("\n");
+    int maxpairwinner;
+    int maxpairloser;
+    int tag;
     for (int i = 0; i < (pair_count - 1); i++)
     {
-        minpairwinner = pairs[0].winner;
-        minpairloser = pairs[0].loser;
-        tag = 0;
-        for (int j = 0; j < (pair_count - i); j++)
+        maxpairwinner = pairs[i].winner;
+        maxpairloser = pairs[i].loser;
+        tag = i;
+        // 选择排序，大的放在前面，每轮选出要排序的内容中最大的，交换到放在本轮排序最前面
+        for (int j = i + 1; j < pair_count; j++)
         {
             // if (temp[j] < temp[tag])
-            if (preferences[pairs[j].winner][pairs[j].loser] < preferences[pairs[tag].winner][pairs[tag].loser])
+            if (preferences[pairs[j].winner][pairs[j].loser] > preferences[pairs[tag].winner][pairs[tag].loser])
             {
-                minpairwinner = pairs[j].winner;
-                minpairloser = pairs[j].loser;
+                maxpairwinner = pairs[j].winner;
+                maxpairloser = pairs[j].loser;
                 tag = j;
             }
         }
-        if (tag != (pair_count - i))
+        if (tag != i)
         {
             // temp[tag] = temp[pair_count - i];
             // temp[pair_count - i] = minnum;
 
-            pairs[tag].winner = pairs[pair_count -i].winner;
-            pairs[tag].loser = pairs[pair_count - i].loser;
-            pairs[pair_count - i].winner = minpairwinner;
-            pairs[pair_count - i].loser = minpairloser;
+            pairs[tag].winner = pairs[i].winner;
+            pairs[tag].loser = pairs[i].loser;
+            pairs[i].winner = maxpairwinner;
+            pairs[i].loser = maxpairloser;
         }
     }
+    // test
+    // for(int i = 0; i < pair_count; i++)
+    // {
+    //     printf("%i ",preferences[pairs[i].winner][pairs[i].loser]);
+    // }
     return;
 }
+// 成环判定，递归逻辑完全想不出来
+bool check_cycle(int start, int end)
+{
+    if (start == end)
+    {
+        // 成环
+        return true;
+    }
+    for (int i = 0; i < candidate_count; i++)
+    {
+        // start到i有一条路
+        if (locked[start][i])
+        {
+            if (check_cycle(i, end))
+            {
+                return true;
+            }
+        }
+    }
 
+    return false;
+}
 // Lock pairs into the candidate graph in order, without creating cycles
 void lock_pairs(void)
 {
     // TODO
-    for (int i = 0; i < (pair_count - 1); i++)
+    // 成环判定？
+    for (int i = 0; i < pair_count; i++)
     {
-        locked[pairs[i].winner][pairs[i].loser] = true;
+        //反向成环，说明再加上这条边就成环了
+        if (!check_cycle(pairs[i].loser, pairs[i].winner))
+        {
+            locked[pairs[i].winner][pairs[i].loser] = true;
+        }
     }
-    return;
 }
 
 // Print the winner of the election
+// 题里面的意思应该是【一定含有第一条链】的尽头节点
 void print_winner(void)
 {
     // TODO
     int nametag = pairs[0].winner;
-    bool notstart = true;
-    while (notstart)
+    for (int i = 0; i < candidate_count ; i++)
     {
-        for (int i = 0; i < candidate_count - 1; i++)
+        if (locked[i][nametag])
         {
-            if (locked[i][nametag])
-            {
-                nametag = i;
-                break;
-            }
+            nametag = i;
+            i = -1;
         }
-        notstart = false;
-    }
+     }
     printf("%s\n",candidates[nametag]);
     return;
 }
